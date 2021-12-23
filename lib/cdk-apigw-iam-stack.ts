@@ -1,15 +1,62 @@
-import * as cdk from '@aws-cdk/core';
-// import * as sqs from '@aws-cdk/aws-sqs';
+import * as cdk from "@aws-cdk/core";
+import * as apigateway from "@aws-cdk/aws-apigateway";
+import * as iam from "@aws-cdk/aws-iam";
 
 export class CdkApigwIamStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+    
+    const auth_iamrolearn = cdk.Fn.importValue(this.node.tryGetContext('cognito_idpool_auth_iamrolearn_exportname'))
+    const auth_iamrole = iam.Role.fromRoleArn(this, 'auth_iamrole', auth_iamrolearn)
 
-    // The code that defines your stack goes here
-
-    // example resource
-    // const queue = new sqs.Queue(this, 'CdkApigwIamQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    const restapi = new apigateway.RestApi(this, 'api', {
+      restApiName: id,
+    })
+    
+    const integration = new apigateway.MockIntegration({
+      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
+      requestTemplates: {
+        'application/json': JSON.stringify({
+          statusCode: 200
+        })
+      },
+      integrationResponses: [{
+        statusCode: '200',
+        responseTemplates: {
+          'application/json': JSON.stringify({
+            ip: "$context.identity.sourceIp"
+          })
+        }
+      }]
+    })
+    
+    const method = restapi.root.addMethod('GET', integration, {
+      authorizationType: apigateway.AuthorizationType.IAM,
+      methodResponses: [{
+        statusCode: '200',
+        responseModels: {
+          'application/json': new apigateway.EmptyModel()
+        }
+      }]}
+    )
+    
+    const api_policy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "execute-api:Invoke"
+      ],
+      resources: [ method.methodArn ]
+    })
+    
+    auth_iamrole.attachInlinePolicy(new iam.Policy(this, 'AuthPolicy', {
+      statements: [
+        api_policy
+      ]
+    }))
+    
+    new cdk.CfnOutput(this, 'output', {
+      value: restapi.url
+    })
+    
   }
 }

@@ -33,6 +33,7 @@
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"
-    ]
+    ],
+    "cognito_idpool_auth_iamrolearn_exportname": "v-auth-cognito-idpool-auth-iamrolearn-2"
   }
 }
