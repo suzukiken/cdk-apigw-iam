@@ -11,6 +11,10 @@ export class CdkApigwIamStack extends cdk.Stack {
 
     const restapi = new apigateway.RestApi(this, 'api', {
       restApiName: id,
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS
+      }
     })
     
     const integration = new apigateway.MockIntegration({
@@ -26,6 +30,9 @@ export class CdkApigwIamStack extends cdk.Stack {
           'application/json': JSON.stringify({
             ip: "$context.identity.sourceIp"
           })
+        },
+        responseParameters: {
+          'method.response.header.Access-Control-Allow-Origin': "'*'",
         }
       }]
     })
@@ -36,10 +43,13 @@ export class CdkApigwIamStack extends cdk.Stack {
         statusCode: '200',
         responseModels: {
           'application/json': new apigateway.EmptyModel()
+        },
+        responseParameters: {
+          'method.response.header.Access-Control-Allow-Origin': true,
         }
       }]}
     )
-    
+
     const api_policy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
