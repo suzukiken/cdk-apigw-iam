@@ -13,7 +13,9 @@ export class CdkApigwIamStack extends cdk.Stack {
       restApiName: id,
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowCredentials: true,
+        allowHeaders: apigateway.Cors.DEFAULT_HEADERS
       }
     })
     
@@ -32,12 +34,18 @@ export class CdkApigwIamStack extends cdk.Stack {
           })
         },
         responseParameters: {
-          'method.response.header.Access-Control-Allow-Origin': "'*'",
+          'method.response.header.Access-Control-Allow-Origin': "'c98.figmentresearch.com'",
+          'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+          'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,POST,GET'",
+          'method.response.header.Access-Control-Allow-Credentials': "'true'",
+          //'method.response.header.Content-Type': "'application/json'",
         }
       }]
     })
     
-    const method = restapi.root.addMethod('GET', integration, {
+    const items = restapi.root.addResource('items');
+    
+    const method = items.addMethod('GET', integration, {
       authorizationType: apigateway.AuthorizationType.IAM,
       methodResponses: [{
         statusCode: '200',
@@ -46,6 +54,10 @@ export class CdkApigwIamStack extends cdk.Stack {
         },
         responseParameters: {
           'method.response.header.Access-Control-Allow-Origin': true,
+          'method.response.header.Access-Control-Allow-Headers': true,
+          'method.response.header.Access-Control-Allow-Methods': true,
+          'method.response.header.Access-Control-Allow-Credentials': true,
+          //'method.response.header.Content-Type': true,
         }
       }]}
     )
@@ -55,9 +67,11 @@ export class CdkApigwIamStack extends cdk.Stack {
       actions: [
         "execute-api:Invoke"
       ],
-      resources: [ method.methodArn ]
+      resources: [ 
+        method.methodArn
+      ]
     })
-    
+
     auth_iamrole.attachInlinePolicy(new iam.Policy(this, 'AuthPolicy', {
       statements: [
         api_policy
@@ -68,5 +82,8 @@ export class CdkApigwIamStack extends cdk.Stack {
       value: restapi.url
     })
     
+    new cdk.CfnOutput(this, 'methodArn', {
+      value: method.methodArn
+    })
   }
 }
